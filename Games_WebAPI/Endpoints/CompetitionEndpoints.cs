@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Games_WebAPI.Entities;
+using Games_WebAPI.Repository;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -11,38 +12,39 @@ namespace Games_WebAPI.Endpoints;
 
 public static class CompetitionEndpoints
 {
-    // public static RouteGroupBuilder MapCompetitionEndpoints(this IEndpointRouteBuilder app)
-    // {
-    //     var group = app.MapGroup("/api/competitions")
-    //         .WithTags("competitions"); 
-    //     
-    // }
-    //
-
-
-    public static IResult GetAll(List<Competition> competitions) => competitions.Count != 0
-        ? Results.Ok(competitions)
-        : Results.NoContent();
-
-    public static IResult GetById(Guid id, List<Competition> competitions)
+    public static RouteGroupBuilder MapCompetitionEndpoints(this IEndpointRouteBuilder app)
     {
-        var foundElement = competitions.FirstOrDefault(c => c.Id == id);
-        return foundElement == null
-            ? Results.NotFound()
-            : Results.Ok(foundElement);
+        var group = app.MapGroup("/api/competitions")
+            .WithTags("Competitions");
+
+        group.MapGet("/", (ICompetitionRepository repo) => Results.Ok(repo.GetAll()));
+
+        group.MapGet("/{id:guid}", (Guid id, ICompetitionRepository repo) =>
+        {
+            var competition = repo.GetById(id);
+            return competition is null ? Results.NotFound() : Results.Ok(competition);
+        });
+
+        group.MapPost("/", (Competition competition, ICompetitionRepository repo) =>
+        {
+            repo.Add(competition);
+            return Results.Created($"/api/competitions/{competition.Id}", competition);
+        });
+
+        group.MapPut("/{id:guid}", (Guid id, Competition competition, ICompetitionRepository repo) =>
+        {
+            if (competition.Id != id) return Results.BadRequest();
+            repo.Update(competition);
+            return Results.NoContent();
+        });
+
+        group.MapDelete("/{id:guid}", (Guid id, ICompetitionRepository repo) =>
+        {
+            repo.Delete(id);
+            return Results.NoContent();
+        });
+
+
+        return group;
     }
-
-
-    public static IResult CreateCompetition(Competition competition, List<Competition> competitions)
-    {
-        if (competition.Date.Date <= DateTime.Now.Date) return Results.BadRequest();
-
-        var newCompetition = competition with { Id = Guid.NewGuid() };
-
-        competitions.Add(competition);
-        return Results.Ok();
-    }
-
-    public static IResult UpdateById() => Results.Ok(); 
-
 }

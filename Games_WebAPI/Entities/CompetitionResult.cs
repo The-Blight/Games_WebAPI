@@ -2,7 +2,7 @@
 
 namespace Games_WebAPI.Entities;
 
-public record Result
+public record CompetitionResult
 {
     public required Guid Id { get; init; }
     public required Guid CompetitionId { get; init; }
